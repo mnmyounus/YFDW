@@ -1,0 +1,2 @@
+# This is a placeholder — real builds need the actual JAR from gradle.org
+# On first ./gradlew run, it auto-downloads the correct version.
