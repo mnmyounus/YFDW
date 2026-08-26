@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YFDW — Your File Downloader from Websites</title>
+<meta name="description" content="Open-source Android download manager with embedded Tor, multi-threaded chunked downloading, and a kill switch that exits rather than leak your IP. GPLv3, zero analytics.">
+<meta name="google-site-verification" content="PASTE_HERE">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%2314171C%22/><path d=%22M50 25 L50 60 M35 48 L50 63 L65 48%22 stroke=%22%233DDC84%22 stroke-width=%228%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "YFDW",
+  "alternateName": "Your File Downloader from Websites",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Android 10+",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "MNM YOUNUS" },
+  "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+  "description": "Open-source Android download manager combining web browsing with intelligent media detection, multi-threaded downloading, and embedded Tor."
+}
+</script>
+<style>
+  :root{
+    --bg:#14171C; --bg-raised:#1B1F26; --bg-inset:#0E1013;
+    --line:#2A2F38; --line-soft:#20242C;
+    --text:#E8EAED; --text-dim:#9BA3AF; --text-faint:#5C6470;
+    --green:#3DDC84; --green-dim:#2A9C5E; --green-bg:rgba(61,220,132,0.08);
+    --amber:#E8A33D; --amber-dim:#B87F26; --amber-bg:rgba(232,163,61,0.09);
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --radius: 10px;
+    --accent: var(--green);
+    --accent-dim: var(--green-dim);
+    --accent-bg: var(--green-bg);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+    transition:background .5s ease;
+  }
+  body.insecure{ --accent: var(--amber); --accent-dim: var(--amber-dim); --accent-bg: var(--amber-bg); }
+  a{color:inherit;text-decoration:none;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;}
+  ::selection{background:var(--accent);color:#0E1013;}
+
+  /* Header */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:rgba(20,23,28,0.85); backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .headbar{display:flex;align-items:center;justify-content:space-between;height:64px;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:-0.01em;}
+  .brand .mark{width:26px;height:26px;border-radius:7px;background:var(--bg-inset);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;}
+  .brand .mark svg{width:14px;height:14px;}
+  .brand .sub{color:var(--text-faint);font-weight:500;font-size:11px;font-family:var(--mono);margin-left:2px;}
+  nav{display:flex;gap:2px;}
+  nav button{
+    background:none;border:none;color:var(--text-dim);font-family:var(--sans);
+    font-size:13.5px;font-weight:500;padding:8px 14px;border-radius:7px;cursor:pointer;
+    transition:color .15s, background .15s;
+  }
+  nav button:hover{color:var(--text);background:var(--bg-raised);}
+  nav button.active{color:var(--text);background:var(--bg-raised);}
+  .head-cta{
+    font-family:var(--mono);font-size:12.5px;font-weight:600;
+    background:var(--bg-inset);border:1px solid var(--line);
+    padding:7px 13px;border-radius:7px;display:flex;align-items:center;gap:6px;
+    transition:border-color .15s;
+  }
+  .head-cta:hover{border-color:var(--text-faint);}
+  @media (max-width:760px){ nav{display:none;} }
+
+  main{display:none;}
+  main.active{display:block;}
+
+  /* HERO */
+  .hero{padding:88px 0 64px;}
+  .hero-grid{display:grid;grid-template-columns:1.05fr 0.95fr;gap:56px;align-items:start;}
+  @media (max-width:900px){ .hero-grid{grid-template-columns:1fr;} }
+
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;color:var(--text-faint);
+    letter-spacing:0.04em;margin-bottom:18px;display:flex;align-items:center;gap:8px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
+  h1{
+    font-size:44px;line-height:1.08;font-weight:800;letter-spacing:-0.025em;
+    margin-bottom:20px;
+  }
+  h1 .accent-word{color:var(--accent);transition:color .5s ease;}
+  .lede{font-size:17px;color:var(--text-dim);max-width:46ch;margin-bottom:30px;line-height:1.6;}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:36px;}
+  .btn-primary{
+    background:var(--text);color:var(--bg);font-weight:700;font-size:14.5px;
+    padding:13px 22px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;
+    transition:transform .15s, box-shadow .15s;
+  }
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,0.3);}
+  .btn-secondary{
+    border:1px solid var(--line);color:var(--text-dim);font-weight:600;font-size:14.5px;
+    padding:13px 22px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;
+    transition:border-color .15s, color .15s;
+  }
+  .btn-secondary:hover{border-color:var(--text-faint);color:var(--text);}
+  .quickstats{display:flex;gap:28px;flex-wrap:wrap;}
+  .qstat b{display:block;font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text);}
+  .qstat span{font-size:12px;color:var(--text-faint);}
+
+  /* Interactive security chip demo */
+  .demo-card{
+    background:var(--bg-raised);border:1px solid var(--line);border-radius:14px;
+    padding:22px;
+  }
+  .demo-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .demo-title{font-family:var(--mono);font-size:12px;color:var(--text-faint);}
+  .toggle-row{display:flex;align-items:center;gap:10px;}
+  .toggle-label{font-size:11.5px;color:var(--text-faint);font-family:var(--mono);}
+  .toggle{
+    width:40px;height:22px;border-radius:999px;background:var(--bg-inset);
+    border:1px solid var(--line);position:relative;cursor:pointer;transition:border-color .2s;
+  }
+  .toggle .knob{
+    width:16px;height:16px;border-radius:50%;background:var(--green);position:absolute;top:2px;left:2px;
+    transition:transform .25s cubic-bezier(.4,0,.2,1), background .25s;
+  }
+  .toggle.off .knob{transform:translateX(18px);background:var(--amber);}
+
+  .chip{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--accent-bg);border:1px solid var(--accent-dim);color:var(--accent);
+    font-family:var(--mono);font-size:12.5px;font-weight:600;
+    padding:8px 13px;border-radius:8px;margin-bottom:18px;transition:all .3s ease;
+  }
+  .chip .pulse{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+  .chunk-viz{display:flex;gap:4px;margin-bottom:16px;}
+  .chunk{
+    flex:1;height:26px;border-radius:4px;background:var(--bg-inset);border:1px solid var(--line);
+    position:relative;overflow:hidden;
+  }
+  .chunk::after{
+    content:'';position:absolute;inset:0;background:var(--accent);opacity:0.85;
+    transform:scaleX(var(--fill,0));transform-origin:left;transition:transform 1.4s ease, background .3s;
+  }
+  .demo-foot{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--text-faint);}
+  .demo-note{
+    margin-top:16px;padding-top:16px;border-top:1px solid var(--line-soft);
+    font-size:12.5px;color:var(--text-faint);line-height:1.6;
+  }
+  .demo-note b{color:var(--text-dim);}
+
+  /* Sections */
+  section{padding:72px 0;border-top:1px solid var(--line-soft);}
+  .section-head{max-width:640px;margin-bottom:44px;}
+  .section-tag{font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:10px;transition:color .5s;}
+  h2{font-size:30px;font-weight:800;letter-spacing:-0.02em;margin-bottom:12px;}
+  .section-desc{color:var(--text-dim);font-size:15.5px;line-height:1.65;}
+
+  /* Feature grid */
+  .fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:14px;overflow:hidden;}
+  @media (max-width:820px){ .fgrid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .fgrid{grid-template-columns:1fr;} }
+  .fcard{background:var(--bg-raised);padding:26px 22px;}
+  .fcard .ficon{
+    width:36px;height:36px;border-radius:9px;background:var(--bg-inset);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;margin-bottom:16px;
+  }
+  .fcard .ficon svg{width:18px;height:18px;stroke:var(--accent);transition:stroke .5s;}
+  .fcard h3{font-size:15px;font-weight:700;margin-bottom:6px;}
+  .fcard p{font-size:13.5px;color:var(--text-faint);line-height:1.55;}
+
+  /* Declined card — signature element */
+  .fcard.declined{
+    background:repeating-linear-gradient(135deg, var(--bg-raised), var(--bg-raised) 10px, var(--bg-inset) 10px, var(--bg-inset) 11px);
+    position:relative;
+  }
+  .fcard.declined .ficon{background:var(--bg-inset);border-color:#3A2A20;}
+  .fcard.declined .ficon svg{stroke:var(--amber);}
+  .fcard.declined h3{color:var(--text-dim);}
+  .fcard.declined .strike{position:relative;display:inline-block;}
+  .fcard.declined .strike::after{content:'';position:absolute;left:0;right:0;top:50%;height:1.5px;background:var(--amber-dim);}
+  .declined-badge{
+    position:absolute;top:14px;right:14px;font-family:var(--mono);font-size:9.5px;font-weight:700;
+    color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-dim);
+    padding:3px 7px;border-radius:5px;letter-spacing:0.03em;
+  }
+
+  /* Declined deep-dive */
+  .decline-panel{
+    background:var(--bg-raised);border:1px solid var(--amber-dim);border-radius:14px;padding:32px;margin-top:28px;
+  }
+  .decline-panel .dp-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .decline-panel .dp-head svg{width:20px;height:20px;stroke:var(--amber);flex-shrink:0;}
+  .decline-panel h4{font-size:16px;font-weight:700;}
+  .decline-panel blockquote{
+    font-size:14.5px;color:var(--text-dim);line-height:1.7;border-left:2px solid var(--amber-dim);
+    padding-left:18px;margin:0;
+  }
+  .decline-panel .what-is{
+    margin-top:18px;padding-top:18px;border-top:1px solid var(--line-soft);
+    font-size:13.5px;color:var(--text-faint);
+  }
+  .decline-panel .what-is b{color:var(--green);}
+
+  /* Architecture / mono blocks */
+  .arch-block{
+    background:var(--bg-inset);border:1px solid var(--line);border-radius:12px;padding:24px;
+    font-family:var(--mono);font-size:12.5px;line-height:1.8;color:var(--text-dim);overflow-x:auto;white-space:pre;
+  }
+  .arch-block .lbl{color:var(--green);}
+  .arch-block .path{color:var(--text-faint);}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:40px;}
+  @media (max-width:800px){ .two-col{grid-template-columns:1fr;} }
+
+  /* Stub list */
+  .stub-list{list-style:none;}
+  .stub-list li{
+    display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px;color:var(--text-dim);
+  }
+  .stub-list li:last-child{border-bottom:none;}
+  .stub-list .marker{color:var(--amber);font-family:var(--mono);flex-shrink:0;}
+
+  /* Perms table */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-family:var(--mono);font-size:11px;color:var(--text-faint);font-weight:600;padding:0 0 12px;letter-spacing:0.03em;}
+  td{padding:14px 0;border-top:1px solid var(--line-soft);color:var(--text-dim);}
+  td.perm{font-family:var(--mono);color:var(--text);font-size:12.5px;}
+
+  /* Docs */
+  .code-card{background:var(--bg-inset);border:1px solid var(--line);border-radius:10px;padding:18px 20px;font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-bottom:14px;}
+  .code-card .comment{color:var(--text-faint);}
+  .faq-item{padding:20px 0;border-top:1px solid var(--line-soft);}
+  .faq-item h4{font-size:14.5px;font-weight:700;margin-bottom:8px;}
+  .faq-item p{font-size:13.5px;color:var(--text-faint);line-height:1.6;}
+
+  /* GitHub tab */
+  .gh-hero{
+    text-align:center;padding:64px 0;background:var(--bg-raised);border:1px solid var(--line);border-radius:16px;
+  }
+  .gh-hero svg{width:44px;height:44px;margin-bottom:20px;}
+  .gh-hero h2{margin-bottom:10px;}
+  .gh-hero p{color:var(--text-dim);max-width:44ch;margin:0 auto 28px;}
+  .repo-line{
+    font-family:var(--mono);font-size:13px;color:var(--text-dim);background:var(--bg-inset);
+    border:1px solid var(--line);border-radius:8px;padding:11px 16px;display:inline-flex;align-items:center;gap:10px;
+  }
+
+  /* Footer */
+  footer{border-top:1px solid var(--line-soft);padding:32px 0;}
+  .foot-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+  .foot-row p{font-size:12.5px;color:var(--text-faint);}
+  .foot-links{display:flex;gap:20px;font-size:12.5px;color:var(--text-faint);}
+  .foot-links a:hover{color:var(--text-dim);}
+
+  .theme-toggle{
+    width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--bg-inset);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+  }
+  .theme-toggle svg{width:15px;height:15px;stroke:var(--text-dim);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap headbar">
+    <div class="brand">
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#3DDC84" stroke-width="2.4"><path d="M12 4v11M7 10l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      YFDW <span class="sub">/ downloader</span>
+    </div>
+    <nav>
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="features">Features</button>
+      <button class="tab-btn" data-tab="security">Security</button>
+      <button class="tab-btn" data-tab="docs">Docs</button>
+      <button class="tab-btn" data-tab="github">GitHub</button>
+    </nav>
+    <a class="head-cta" href="https://github.com/mnmyounus/YFDW" target="_blank" rel="noopener">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.5v-1.75c-2.78.62-3.37-1.36-3.37-1.36-.46-1.2-1.11-1.52-1.11-1.52-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.34 1.12 2.91.85.09-.67.35-1.12.64-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.9-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.46.1 2.72.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9v2.82c0 .28.18.61.69.5A10.26 10.26 0 0 0 22 12.25C22 6.58 17.52 2 12 2z"/></svg>
+      Source
+    </a>
+  </div>
+</header>
+
+<!-- OVERVIEW -->
+<main class="active" id="overview">
+  <section class="hero" style="border-top:none;padding-top:56px;">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="eyebrow"><span class="dot"></span>OPEN SOURCE · GPLv3 · ANDROID 10–15</div>
+        <h1>A downloader that tells you what it <span class="accent-word">wouldn't</span> build.</h1>
+        <p class="lede">YFDW pairs a full web browser with a multi-threaded download engine, embedded Tor, and a kill switch that exits the app rather than leak your IP the moment it's insecure. No analytics, no tracking, ever.</p>
+        <div class="hero-ctas">
+          <a class="btn-primary" href="#" onclick="switchTab('docs');return false;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Quickstart
+          </a>
+          <a class="btn-secondary" href="#" onclick="switchTab('security');return false;">Read the security model</a>
+        </div>
+        <div class="quickstats">
+          <div class="qstat"><b>32</b><span>parallel chunks / file</span></div>
+          <div class="qstat"><b>AES-256</b><span>SQLCipher log encryption</span></div>
+          <div class="qstat"><b>0</b><span>analytics SDKs</span></div>
+        </div>
+      </div>
+
+      <div class="demo-card">
+        <div class="demo-head">
+          <span class="demo-title">// live_security_state.kt</span>
+          <div class="toggle-row">
+            <span class="toggle-label">VPN/TOR</span>
+            <div class="toggle" id="netToggle" onclick="toggleNet()"><div class="knob"></div></div>
+          </div>
+        </div>
+        <div class="chip" id="statusChip">
+          <span class="pulse"></span>
+          <span id="chipText">VPN secured — downloads proceeding</span>
+        </div>
+        <div class="chunk-viz" id="chunkViz"></div>
+        <div class="demo-foot">
+          <span id="footLeft">movie_archive.mkv · 4.2 GB</span>
+          <span id="footRight">18 of 32 chunks</span>
+        </div>
+        <div class="demo-note">Toggle VPN/Tor off above. In <b>Privacy &amp; Anonymity</b> mode this is the actual kill-switch behavior — the app exits in 3 seconds rather than let a single packet leave unprotected.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-tag">Problem</div>
+        <h2>Every mainstream downloader asks you to trust it quietly.</h2>
+        <p class="section-desc">Closed-source download managers bundle ad SDKs, phone-home analytics, and — increasingly — YouTube-ripping engines that exist purely to strip DRM at scale. You can't audit what you can't see, and "free" download apps are rarely free of a business model somewhere underneath.</p>
+      </div>
+      <div class="section-head" style="margin-top:8px;">
+        <div class="section-tag">Solution</div>
+        <h2>Full source. Local-only checks. One mode that can't leak.</h2>
+        <p class="section-desc">YFDW is a direct-URL downloader with a browser attached, not a media-extraction tool with a browser bolted on. Every security claim — the kill switch, the malware hash check, the encrypted logs — runs entirely on-device and is in the repo for you to read.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-tag">Install</div>
+        <h2>Build it yourself in one command</h2>
+      </div>
+      <div class="arch-block">$ ./setup.sh                     <span class="lbl"># generates signing keystore, one-time</span>
+$ ./gradlew assembleDebug        <span class="lbl"># ~5 min</span>
+$ adb install -r <span class="path">app/build/outputs/apk/debug/app-debug.apk</span></div>
+    </div>
+  </section>
+</main>
+
+<!-- FEATURES -->
+<main id="features">
+  <section style="border-top:none;padding-top:64px;">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-tag">Features</div>
+        <h2>What's actually in the build</h2>
+        <p class="section-desc">Six shipped systems, and — placed here deliberately rather than hidden — the one capability that was scoped out on purpose.</p>
+      </div>
+
+      <div class="fgrid">
+        <div class="fcard">
+          <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18 15 15 0 010-18z"/></svg></div>
+          <h3>Brave-style browser</h3>
+          <p>Full WebView with search, live page rendering, and automatic scanning for downloadable media as you browse.</p>
+        </div>
+        <div class="fcard">
+          <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div>
+          <h3>32-chunk parallel downloads</h3>
+          <p>Splits large files across HTTP Range requests with auto-resume — a 3–5x speedup over single-threaded downloading.</p>
+        </div>
+        <div class="fcard">
+          <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg></div>
+          <h3>Embedded Tor</h3>
+          <p>Guardian Project's tor-android, bootstrapped with zero external configuration when Privacy &amp; Anonymity mode is on.</p>
+        </div>
+        <div class="fcard">
+          <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+          <h3>Kill switch</h3>
+          <p>Continuously checks for an active VPN or Tor connection in Privacy mode. Neither present → the app exits, full stop.</p>
+        </div>
+        <div class="fcard">
+          <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4M12 3l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z"/></svg></div>
+          <h3>Local malware-hash check</h3>
+          <p>Streaming SHA-256 verified against a local blocklist before any file is finalized. No third-party API calls, nothing leaves the device.</p>
+        </div>
+        <div class="fcard">
+          <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12h8M8 16h5"/></svg></div>
+          <h3>SQLCipher logs</h3>
+          <p>Download history encrypted at rest with AES-256-GCM, key backed by Android Keystore.</p>
+        </div>
+
+        <div class="fcard declined">
+          <span class="declined-badge">Pending</span>
+          <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20" transform="rotate(45 12 12)"/><circle cx="12" cy="12" r="9"/></svg></div>
+          <h3 class="strike">Universal Media Extraction Engine</h3>
+          <p>NewPipe-style stream ripping from YouTube and streaming platforms.</p>
+        </div>
+      </div>
+
+  </section>
+</main>
+
+<!-- SECURITY -->
+<main id="security">
+  <section style="border-top:none;padding-top:64px;">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-tag">Security</div>
+        <h2>Two modes. One of them can't fail quietly.</h2>
+        <p class="section-desc">Every claim below is enforced in code you can read, not a policy you have to take on faith.</p>
+      </div>
+
+      <table>
+        <thead><tr><th>Property</th><th>Privacy &amp; Anonymity</th><th>Standard</th></tr></thead>
+        <tbody>
+          <tr><td>Network requirement</td><td>VPN or embedded Tor required</td><td>None — any network</td></tr>
+          <tr><td>Kill switch</td><td>Armed — auto-exits if neither detected</td><td>Disarmed</td></tr>
+          <tr><td>Tor service</td><td>Started on demand</td><td>Never started</td></tr>
+          <tr><td>Encryption / scoped storage / hash check</td><td>On</td><td>On</td></tr>
+        </tbody>
+      </table>
+
+      <div class="two-col" style="margin-top:48px;">
+        <div>
+          <h3 style="font-size:16px;margin-bottom:14px;">Switching modes re-checks immediately</h3>
+          <p style="color:var(--text-dim);font-size:14px;line-height:1.7;">Choosing Privacy &amp; Anonymity mode isn't a settings flag that takes effect later — it triggers an immediate connection check. If neither VPN nor Tor is active at that instant, the kill switch fires right away and the app exits, preventing an accidental IP leak in the gap between switching modes and actually connecting.</p>
+        </div>
+        <div>
+          <h3 style="font-size:16px;margin-bottom:14px;">What "local-only" actually means here</h3>
+          <p style="color:var(--text-dim);font-size:14px;line-height:1.7;">The malware check hashes each file with streaming SHA-256 as it writes, then compares against a JSON blocklist that ships in the app — no network call, no third party sees your download history. It's a real trade-off: it catches previously-seen malware, not zero-days. That's stated plainly, not implied to be more than it is.</p>
+        </div>
+      </div>
+
+      <div class="section-head" style="margin-top:56px;">
+        <div class="section-tag">Architecture</div>
+        <h2>Security layer, isolated by design</h2>
+      </div>
+      <div class="arch-block"><span class="lbl">Security:</span>
+  NetworkVpnObserver    → detects active VPN transport
+  TorManager            → bootstraps embedded Tor, SOCKS proxy
+  SecurityGate          → monitors state, fires kill switch if Insecure
+
+<span class="lbl">Downloads:</span>
+  DownloadChunkPlanner  → splits files into 1–32 chunks
+  ChunkDownloader       → HTTP Range headers, parallel fetch
+  DownloadEngine        → orchestrates probe→plan→fetch→merge→hash→check
+
+<span class="lbl">Local integrity:</span>
+  StreamingHasher       → SHA-256 while writing, no second pass
+  MalwareSignatureChecker → local JSON blocklist, no external API calls</div>
+
+      <div class="section-head" style="margin-top:56px;">
+        <div class="section-tag">Permissions</div>
+        <h2>Four permissions. All read directly in the manifest.</h2>
+      </div>
+      <table>
+        <thead><tr><th>Permission</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td class="perm">INTERNET</td><td>Network access to download files</td></tr>
+          <tr><td class="perm">ACCESS_NETWORK_STATE</td><td>Check VPN/Tor status for the kill switch</td></tr>
+          <tr><td class="perm">FOREGROUND_SERVICE</td><td>Keep downloads running in the background</td></tr>
+          <tr><td class="perm">POST_NOTIFICATIONS</td><td>Show download progress</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:13px;color:var(--text-faint);margin-top:14px;">YFDW never requests microphone, camera, location, contacts, or SMS access.</p>
+    </div>
+  </section>
+</main>
+
+<!-- DOCS -->
+<main id="docs">
+  <section style="border-top:none;padding-top:64px;">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-tag">Docs</div>
+        <h2>Quickstart</h2>
+      </div>
+      <div class="code-card"><span class="comment"># one-time setup</span><br>./setup.sh<br><br><span class="comment"># debug build</span><br>./gradlew assembleDebug<br>adb install -r app/build/outputs/apk/debug/app-debug.apk<br><br><span class="comment"># signed release</span><br>./gradlew assembleRelease</div>
+      <p style="font-size:13.5px;color:var(--text-faint);">Or push a version tag (<span style="font-family:var(--mono);color:var(--text-dim);">git tag v1.0.0 && git push origin v1.0.0</span>) to let GitHub Actions build, sign, and attach the APK to a release automatically.</p>
+
+      <div class="section-head" style="margin-top:52px;">
+        <div class="section-tag">Tech stack</div>
+        <h2>Clean Architecture, Kotlin-native</h2>
+      </div>
+      <div class="two-col">
+        <div class="arch-block" style="margin:0;">domain/         <span class="lbl"># use cases, repo interfaces, pure Kotlin</span>
+data/           <span class="lbl"># Room DB, OkHttp, Tor mgr, engine</span>
+presentation/   <span class="lbl"># Compose screens, ViewModels, nav</span>
+di/             <span class="lbl"># Hilt dependency injection</span></div>
+        <ul class="stub-list">
+          <li><span class="marker">→</span>Kotlin + Jetpack Compose, reactive state throughout</li>
+          <li><span class="marker">→</span>Hilt DI — compile-time, zero reflection</li>
+          <li><span class="marker">→</span>Scoped Storage compliant (Android 11+)</li>
+          <li><span class="marker">→</span>ProGuard/R8 minification, GitHub Actions CI/CD</li>
+        </ul>
+      </div>
+
+      <div class="section-head" style="margin-top:52px;">
+        <div class="section-tag">Known stubs</div>
+        <h2>What's not finished yet</h2>
+      </div>
+      <ul class="stub-list">
+        <li><span class="marker">01</span>Pause doesn't yet auto-cancel in-flight downloads if interrupted before completion. A job registry exists; full fix needs the job cancelled, partial part-files persisted, and DB state re-synced on restart.</li>
+        <li><span class="marker">02</span>No app icon — drop your own res/mipmap-* assets and update the manifest.</li>
+        <li><span class="marker">03</span>No automated tests — scaffold under app/src/test/ and app/src/androidTest/.</li>
+      </ul>
+
+      <div class="section-head" style="margin-top:52px;">
+        <div class="section-tag">FAQ</div>
+        <h2>Before you ask</h2>
+      </div>
+      <div class="faq-item">
+        <h4>Can it download from YouTube?</h4>
+        <p>No, and that's not a missing feature waiting on a future release.</p>
+      </div>
+      <div class="faq-item">
+        <h4>Does Standard mode collect anything?</h4>
+        <p>No. Standard mode disarms the kill switch and skips Tor, but encryption, scoped storage, and the local hash check stay on in both modes. There is no analytics path in either.</p>
+      </div>
+      <div class="faq-item">
+        <h4>What happens to a file that's already downloading if the kill switch fires?</h4>
+        <p>The app exits. In-flight chunks stop; nothing further is transmitted. This is the known trade-off of a hard kill switch — it favors never leaking over graceful continuation.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- GITHUB -->
+<main id="github">
+  <section style="border-top:none;padding-top:64px;">
+    <div class="wrap">
+      <div class="gh-hero">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="color:var(--text);"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.5v-1.75c-2.78.62-3.37-1.36-3.37-1.36-.46-1.2-1.11-1.52-1.11-1.52-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.34 1.12 2.91.85.09-.67.35-1.12.64-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.9-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.46.1 2.72.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9v2.82c0 .28.18.61.69.5A10.26 10.26 0 0 0 22 12.25C22 6.58 17.52 2 12 2z"/></svg>
+        <h2>Full source. Read every claim on this page.</h2>
+        <p>GPLv3. Buildable, tested on Android 10–15 emulators. No hidden network calls — check for yourself.</p>
+        <a class="repo-line" href="https://github.com/mnmyounus/YFDW" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v18M6 3h12l-3 4 3 4H6"/></svg>
+          github.com/mnmyounus/YFDW
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-row">
+    <p>© 2026 MNM YOUNUS.</p>
+    <div class="foot-links">
+      <a href="https://github.com/mnmyounus/YFDW" target="_blank" rel="noopener">GitHub</a>
+      <a href="#" onclick="switchTab('docs');return false;">Docs</a>
+      <a href="#" onclick="switchTab('security');return false;">Security</a>
+    </div>
+    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Tab switching
+  const buttons = document.querySelectorAll('.tab-btn');
+  const mains = document.querySelectorAll('main');
+  function switchTab(id){
+    mains.forEach(m => m.classList.toggle('active', m.id === id));
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+    window.scrollTo({top:0, behavior:'instant'});
+  }
+  buttons.forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+  // Kill-switch demo
+  let netOn = true;
+  const chipTexts = {
+    on: "VPN secured — downloads proceeding",
+    off: "Insecure — exiting in 3s"
+  };
+  function toggleNet(){
+    netOn = !netOn;
+    document.getElementById('netToggle').classList.toggle('off', !netOn);
+    document.getElementById('chipText').textContent = netOn ? chipTexts.on : chipTexts.off;
+    document.body.classList.toggle('insecure', !netOn);
+    document.getElementById('footRight').textContent = netOn ? "18 of 32 chunks" : "kill switch armed";
+  }
+
+  // Chunk viz build
+  const viz = document.getElementById('chunkViz');
+  for(let i=0;i<16;i++){
+    const c = document.createElement('div');
+    c.className = 'chunk';
+    viz.appendChild(c);
+  }
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      document.querySelectorAll('.chunk').forEach((c,i) => {
+        const fill = i < 9 ? 1 : (i === 9 ? 0.4 : 0);
+        c.style.setProperty('--fill', fill);
+      });
+    }, 300);
+  });
+
+  // Theme toggle (dark default; light is a softened inversion)
+  let isLight = false;
+  function toggleTheme(){
+    isLight = !isLight;
+    document.documentElement.style.setProperty('--bg', isLight ? '#F5F6F8' : '#14171C');
+    document.documentElement.style.setProperty('--bg-raised', isLight ? '#FFFFFF' : '#1B1F26');
+    document.documentElement.style.setProperty('--bg-inset', isLight ? '#ECEEF1' : '#0E1013');
+    document.documentElement.style.setProperty('--line', isLight ? '#DADFE5' : '#2A2F38');
+    document.documentElement.style.setProperty('--line-soft', isLight ? '#E5E8EC' : '#20242C');
+    document.documentElement.style.setProperty('--text', isLight ? '#171A1F' : '#E8EAED');
+    document.documentElement.style.setProperty('--text-dim', isLight ? '#4B525C' : '#9BA3AF');
+    document.documentElement.style.setProperty('--text-faint', isLight ? '#848C97' : '#5C6470');
+  }
+</script>
+
+</body>
+</html>
